@@ -1,0 +1,79 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(cuid())
+  githubId    String   @unique
+  username    String   @unique
+  displayName String
+  email       String?
+  avatarUrl   String
+  accessToken String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  snapshots   ActivitySnapshot[]
+  reports     WeeklyReport[]
+
+  @@map("users")
+}
+
+model ActivitySnapshot {
+  id           String   @id @default(cuid())
+  userId       String
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  totalCommits Int      @default(0)
+  totalPRs     Int      @default(0)
+  totalIssues  Int      @default(0)
+  totalStars   Int      @default(0)
+  topLanguage  String?
+  streakDays   Int      @default(0)
+  activeRepos  Json
+
+  snapshotDate DateTime @default(now())
+  weekNumber   Int
+  year         Int
+
+  @@map("activity_snapshots")
+  @@index([userId, year, weekNumber])
+}
+
+model WeeklyReport {
+  id           String       @id @default(cuid())
+  userId       String
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  weekNumber   Int
+  year         Int
+
+  summary      String
+  highlights   Json
+  suggestions  Json
+  score        Int
+
+  status       ReportStatus @default(PENDING)
+  jobId        String?
+  errorMessage String?
+
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@map("weekly_reports")
+  @@unique([userId, weekNumber, year])
+}
+
+enum ReportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
